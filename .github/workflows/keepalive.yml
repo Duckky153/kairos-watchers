@@ -1,0 +1,32 @@
+name: keepalive
+
+# GitHub disables a repo's scheduled workflows after 60 days with no repository activity. Natural
+# observation commits usually keep this repo active, but during a long quiet stretch this weekly
+# job bumps a content-free heartbeat (the Actions run number) so `watch` never gets auto-disabled.
+on:
+  schedule:
+    - cron: '17 6 * * 1'  # Mondays 06:17 UTC — comfortably inside the 60-day window
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump heartbeat
+        run: |
+          set -euo pipefail
+          echo "${GITHUB_RUN_NUMBER}" > state/keepalive
+          git config user.name "kairos-watcher[bot]"
+          git config user.email "kairos-watcher@users.noreply.github.com"
+          git add state/keepalive
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "keepalive: run ${GITHUB_RUN_NUMBER}"
+            git push
+          fi

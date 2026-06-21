@@ -1,0 +1,72 @@
+[
+  {
+    "data_class": "open",
+    "door_id": "gh-aeon",
+    "endpoint": "https://github.com/aeon-toolkit/aeon/releases.atom",
+    "kind": "github_release",
+    "owner_domain": "kairos"
+  },
+  {
+    "data_class": "open",
+    "door_id": "gh-agentbudget",
+    "endpoint": "https://github.com/AgentBudget/agentbudget/releases.atom",
+    "kind": "github_release",
+    "owner_domain": "kairos"
+  },
+  {
+    "data_class": "open",
+    "door_id": "gh-gepa",
+    "endpoint": "https://github.com/gepa-ai/gepa/releases.atom",
+    "kind": "github_release",
+    "owner_domain": "kairos"
+  },
+  {
+    "data_class": "open",
+    "door_id": "gh-sqlite-vec",
+    "endpoint": "https://github.com/asg017/sqlite-vec/releases.atom",
+    "kind": "github_release",
+    "owner_domain": "kairos"
+  },
+  {
+    "data_class": "open",
+    "door_id": "gh-promptfoo",
+    "endpoint": "https://github.com/promptfoo/promptfoo/releases.atom",
+    "kind": "github_release",
+    "owner_domain": "kairos"
+  },
+  {
+    "data_class": "open",
+    "door_id": "feed-free-llm-api",
+    "endpoint": "https://github.com/cheahjs/free-llm-api-resources/commits.atom",
+    "kind": "http",
+    "owner_domain": "kairos"
+  },
+  {
+    "data_class": "open",
+    "door_id": "status-anthropic",
+    "endpoint": "https://status.anthropic.com/history.atom",
+    "kind": "http",
+    "owner_domain": "kairos"
+  },
+  {
+    "data_class": "open",
+    "door_id": "status-groq",
+    "endpoint": "https://groqstatus.com/history.atom",
+    "kind": "http",
+    "owner_domain": "kairos"
+  },
+  {
+    "data_class": "open",
+    "door_id": "status-cerebras",
+    "endpoint": "https://status.cerebras.ai/history.atom",
+    "kind": "http",
+    "owner_domain": "kairos"
+  },
+  {
+    "data_class": "open",
+    "door_id": "pricing-anthropic",
+    "endpoint": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+    "kind": "http",
+    "owner_domain": "kairos"
+  }
+]

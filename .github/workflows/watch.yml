@@ -1,0 +1,60 @@
+name: watch
+
+# A free-tier cloud SENSE for the private KAIROS spine. It polls public feeds, hashes them, and
+# commits a content-addressed observation back to THIS repo only when a feed moved (~95% of runs
+# are silent). The laptop pulls + folds those observations. NO secrets are used anywhere.
+on:
+  schedule:
+    # Odd-minute offsets (:13, :43) keep this job off the top-of-hour Actions surge; every 30 min,
+    # matching the door cadence in doors.json.
+    - cron: '13,43 * * * *'
+  workflow_dispatch: {}
+
+# Least privilege: the only write the watcher needs is committing observations to this public repo.
+# No `secrets:` are referenced — the watcher carries no OAuth / kairos-bot key / model-provider key.
+permissions:
+  contents: write
+
+concurrency:
+  group: watch
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Sweep doors (content-free log)
+        run: python watch.py --doors doors.json --inbox inbox --cache state/hashes.json
+
+      - name: Secret-scan observations (defense in depth, fail-closed)
+        run: |
+          set -euo pipefail
+          # The observation excerpt is already secret-scrubbed in watch.py; this is a second,
+          # independent gate. If gitleaks cannot run or finds anything, the job FAILS and nothing
+          # is committed.
+          GITLEAKS_VERSION=8.18.4
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tgz
+          tar -xzf gitleaks.tgz gitleaks
+          ./gitleaks detect --no-git --source inbox --redact --exit-code 1
+          ./gitleaks detect --no-git --source state --redact --exit-code 1
+          rm -f gitleaks gitleaks.tgz
+
+      - name: Commit observations
+        run: |
+          set -euo pipefail
+          git config user.name "kairos-watcher[bot]"
+          git config user.email "kairos-watcher@users.noreply.github.com"
+          git add inbox state
+          if git diff --cached --quiet; then
+            echo "silent run — no observations to commit"
+          else
+            n=$(git diff --cached --name-only | wc -l | tr -d ' ')
+            git commit -m "watch: ${n} changed file(s)"
+            git push
+          fi
