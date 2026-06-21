@@ -40,7 +40,7 @@ jobs:
           # content digests + a run number). .gitleaks.toml allowlists the 64-hex sha256 shape so a
           # content_sha256 isn't a false positive, while real prefix-keyed secrets stay detected.
           # If gitleaks cannot run or finds anything, the job FAILS and nothing is committed.
-          GITLEAKS_VERSION=8.18.4
+          GITLEAKS_VERSION=8.30.1
           curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tgz
           tar -xzf gitleaks.tgz gitleaks
           ./gitleaks detect --no-git --source inbox --config .gitleaks.toml --redact --exit-code 1
