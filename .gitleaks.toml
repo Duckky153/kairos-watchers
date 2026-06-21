@@ -1,0 +1,20 @@
+title = "kairos-watchers"
+
+# Defense-in-depth secret scan for the watcher's committed observations. watch.py already runs the
+# full gitleaks-class scrub on every excerpt before it is written; this is a SECOND, independent
+# gate in the Actions job (see .github/workflows/watch.yml).
+[extend]
+useDefault = true
+
+# Every observation carries a `content_sha256` (a 64-hex sha256 of the public feed body), and the
+# hash cache is all 64-hex digests. gitleaks' entropy-based `generic-api-key` rule flags any 64-hex
+# string as a possible secret — a structural FALSE POSITIVE here (a content digest of public data is
+# not a credential). watch.py's scrub deliberately leaves bare hashes intact for the same reason
+# (shredding every hash would be meaningless). So allowlist exactly the 64-hex content-hash shape —
+# and NOTHING broader: prefix/keyword-anchored real secrets (ghp_/sk-ant-/AKIA/stripe/…) are NOT
+# 64-hex and remain fully detected. (Pinned by tests/test_doors_public_deploy.py so it can't be
+# silently widened to exempt a real secret.)
+[allowlist]
+description = "sha256 content digests are public content hashes, never credentials"
+regexTarget = "match"
+regexes = ['''\b[a-f0-9]{64}\b''']

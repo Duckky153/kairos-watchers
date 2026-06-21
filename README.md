@@ -53,6 +53,7 @@ re-hashing, and a re-observation of an unchanged feed is the same file (deduplic
 | `watch.py` | The standalone, stdlib-only watcher. No third-party imports. |
 | `doors.json` | The public door list (id, kind, https endpoint, `data_class: open`, owner domain). |
 | `.github/workflows/watch.yml` | The 30-minute sweep + secret-scan + commit-back. |
+| `.gitleaks.toml` | The secret-scan config (default rules; allowlists only the 64-hex content-hash shape). |
 | `.github/workflows/keepalive.yml` | Weekly heartbeat so scheduled runs aren't auto-disabled at 60 days idle. |
 | `inbox/` | Observations awaiting the laptop fold. |
 | `state/` | The cross-run last-hash cache + keepalive heartbeat. |
