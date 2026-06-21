@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: kairos-watchers-write  # shared with watch — never two repo-writers at once
+  cancel-in-progress: false
+
 jobs:
   keepalive:
     runs-on: ubuntu-latest
@@ -26,7 +30,10 @@ jobs:
           git add state/keepalive
           if git diff --cached --quiet; then
             echo "no change"
-          else
-            git commit -m "keepalive: run ${GITHUB_RUN_NUMBER}"
-            git push
+            exit 0
           fi
+          git commit -m "keepalive: run ${GITHUB_RUN_NUMBER}"
+          for attempt in 1 2 3; do
+            if git push; then exit 0; fi
+            git pull --rebase --no-edit origin "${GITHUB_REF_NAME}" || { git rebase --abort || true; exit 0; }
+          done

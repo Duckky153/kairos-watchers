@@ -16,7 +16,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: watch
+  group: kairos-watchers-write  # shared with keepalive — never two repo-writers at once
   cancel-in-progress: false
 
 jobs:
@@ -54,8 +54,22 @@ jobs:
           git add inbox state
           if git diff --cached --quiet; then
             echo "silent run — no observations to commit"
-          else
-            n=$(git diff --cached --name-only | wc -l | tr -d ' ')
-            git commit -m "watch: ${n} changed file(s)"
-            git push
+            exit 0
           fi
+          n=$(git diff --cached --name-only | wc -l | tr -d ' ')
+          git commit -m "watch: ${n} changed file(s)"
+          # The repo has multiple writers (the scheduled + manual runs, and the laptop pruning folded
+          # observations), so a push can be rejected non-fast-forward. Rebase on the remote and retry
+          # — inbox observations are content-addressed so they never conflict. A rare state/ conflict
+          # or a persistent push failure is NOT a job failure: this run drops its commit and the next
+          # run re-emits (the cache only advances on the dropped commit, so nothing is lost).
+          for attempt in 1 2 3 4 5; do
+            if git push; then echo "pushed"; exit 0; fi
+            echo "push rejected (attempt ${attempt}) — rebasing on origin/${GITHUB_REF_NAME}"
+            git pull --rebase --no-edit origin "${GITHUB_REF_NAME}" || {
+              git rebase --abort || true
+              echo "rebase conflicted — dropping this run's commit; next run re-emits"
+              exit 0
+            }
+          done
+          echo "could not push after retries — next run re-emits"
