@@ -1,26 +1,27 @@
 #!/usr/bin/env python3
-"""KAIROS public watcher — a STANDALONE, stdlib-only cloud sense (P3.1 deploy).
+"""Public watcher — a STANDALONE, stdlib-only cloud sense.
 
-This file is the payload of the SEPARATE public repo ``Duckky153/kairos-watchers``. It runs on free
+This file is the payload of the public repo ``Duckky153/kairos-watchers``. It runs on free
 GitHub-Actions cron, polls a committed list of PUBLIC feed URLs (``doors.json``), and — only when a
 feed's content hash MOVES (~95% of runs are silent) — writes a content-addressed observation into
-``inbox/``. The laptop later pulls + folds each observation into the private KAIROS spine as
-UNTRUSTED ``cloud-inbox`` data.
+``inbox/``. A laptop later pulls each observation and folds it into a private personal-AI system as
+UNTRUSTED data.
 
-WHY IT IS SELF-CONTAINED (no ``import kairos``):
-* The private KAIROS package (the spine, dispatcher, vault, hands) MUST stay private. The public
-  watcher carries NONE of it — only the read-only fetch-and-hash core.
-* Yet the observation it writes must be BYTE-IDENTICAL to the kairos sweeper's ``build_observation``
-  output, because the laptop's ``InboxFold`` is content-addressed (the file name stem == the sha256
-  of its bytes). So the JSON shape, the serialization, and the secret scrub below are faithful ports
-  of the private modules; a kairos-side test (``tests/test_doors_public_deploy.py``) pins that
-  byte-identity so the two copies can never drift.
+WHY IT IS SELF-CONTAINED (no private imports):
+* The private system this feeds MUST stay private. The public watcher carries NONE of it — only the
+  read-only fetch-and-hash core.
+* Yet the observation it writes must be BYTE-IDENTICAL to what the private side expects, because
+  the laptop-side fold is content-addressed (the file name stem == the sha256 of its bytes). So the
+  JSON shape, the serialization, and the secret scrub below are faithful ports of the private
+  implementation; a test on the private side pins that byte-identity so the two copies can never
+  drift.
 
-THE NO-SECRETS CONTRACT (Lock #7 / invariant 7):
-* The watcher uses NO credentials of any kind — no OAuth, no kairos-bot key, no model-provider key,
-  no Actions secret. It fetches only PUBLIC feeds over https. Logs are CONTENT-FREE (counts + public
+THE NO-SECRETS CONTRACT:
+* The watcher uses NO credentials of any kind — no OAuth, no bot key, no model-provider key, no
+  Actions secret. It fetches only PUBLIC feeds over https. Logs are CONTENT-FREE (counts + public
   door ids). The feed excerpt carried in each observation is bounded AND secret-scrubbed, so even a
-  feed that accidentally contains a credential cannot leak it onto the spine or into this repo.
+  feed that accidentally contains a credential cannot leak it into the private system or into this
+  repo.
 """
 
 from __future__ import annotations
@@ -38,20 +39,20 @@ from typing import Any, NamedTuple
 from urllib.parse import urlparse
 
 # --------------------------------------------------------------------------- #
-# Observation shape (faithful port of kairos.doors.sweeper) — DO NOT diverge.
+# Observation shape (faithful port of the private implementation) — DO NOT diverge.
 # --------------------------------------------------------------------------- #
 OBSERVATION_TYPE = "door.observation"
 MAX_EXCERPT_BYTES = 4096
 _SCRUB_WINDOW_BYTES = 256 * 1024
 
-# Fetch bounds (faithful port of kairos.doors.watcher).
+# Fetch bounds (faithful port of the private implementation).
 MAX_FETCH_BYTES = 2 * 1024 * 1024
 DEFAULT_TIMEOUT_S = 20.0
 
 
 class Door(NamedTuple):
     """A public door row from ``doors.json``. All fields are plain strings (``kind`` /
-    ``data_class`` are the StrEnum *values* the kairos registry uses, so the observation payload
+    ``data_class`` are the plain string values the private side uses, so the observation payload
     matches byte-for-byte)."""
 
     door_id: str
@@ -62,9 +63,9 @@ class Door(NamedTuple):
 
 
 # --------------------------------------------------------------------------- #
-# Secret scrub — a VERBATIM port of kairos.retrieval.secret_scrub.scrub_text (P1.10-C / JCODE #15).
-# Returns just the scrubbed string (the public watcher needs no Finding provenance). Kept rule-for-
-# rule identical to the private module; the parity test goes RED on any divergence.
+# Secret scrub — a VERBATIM port of the private secret-scrubbing routine.
+# Returns just the scrubbed string (the public watcher needs no finding provenance). Kept rule-for-
+# rule identical to the private version; the private-side parity test fails on any divergence.
 # --------------------------------------------------------------------------- #
 _PLACEHOLDER = "[REDACTED:{}]"
 
@@ -135,7 +136,7 @@ _RULES: list[tuple[str, re.Pattern[str], int | str]] = [
 def scrub_text(text: str) -> str:
     """Redact every gitleaks-class secret in ``text`` and return the index-safe string. A non-str
     input fails CLOSED to an empty string (an unscannable chunk is suppressed). Byte-for-byte
-    equivalent to ``kairos.retrieval.secret_scrub.scrub_text(text).text``."""
+    equivalent to the scrubbed text from the private implementation."""
     if not isinstance(text, str):
         return ""
 
@@ -172,7 +173,7 @@ def scrub_text(text: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Observation builder — faithful port of kairos.doors.sweeper.build_observation.
+# Observation builder — faithful port of the private implementation.
 # --------------------------------------------------------------------------- #
 def _excerpt(body: bytes) -> str:
     """A bounded, secret-scrubbed text preview. Scrub a window WIDER than the excerpt first (so a
@@ -185,7 +186,7 @@ def _excerpt(body: bytes) -> str:
 def build_observation(door: Door, *, body: bytes) -> tuple[bytes, str, str]:
     """Build the deterministic, content-addressed observation for ``(door, body)``. Returns
     ``(canonical_json_bytes, filename, feed_hash)``. No timestamp -> identical bytes for the same
-    feed state (the laptop inbox-fold dedups a re-observation by content hash)."""
+    feed state (the laptop-side fold dedups a re-observation by content hash)."""
     feed_hash = hashlib.sha256(body).hexdigest()
     obj = {
         "type": OBSERVATION_TYPE,
@@ -205,7 +206,7 @@ def build_observation(door: Door, *, body: bytes) -> tuple[bytes, str, str]:
 
 
 # --------------------------------------------------------------------------- #
-# Bounded https-only fetch (faithful port of kairos.doors.watcher).
+# Bounded https-only fetch (faithful port of the private implementation).
 # --------------------------------------------------------------------------- #
 class FetchError(Exception):
     """A door fetch failed or was refused (non-https / oversize / network error)."""
@@ -307,7 +308,7 @@ def load_doors(path: Path) -> list[Door]:
             # A ``https://user:pass@host`` endpoint committed to a PUBLIC repo IS a published
             # credential — the one thing this repo must never carry (the no-secrets contract).
             # (Broader host/IP allowlisting — blocking internal targets — is the documented
-            # deploy-time residual, consistent with the private registry's stated boundary.)
+            # deploy-time residual, consistent with the private side's stated boundary.)
             raise ValueError(f"door {d.door_id}: endpoint must not embed credentials")
         if d.door_id in seen:
             raise ValueError(f"duplicate door_id: {d.door_id}")
@@ -359,8 +360,8 @@ def run_watcher(
 
 def main(argv: list[str] | None = None, *, fetch: Callable[[Door], bytes] = http_fetch) -> int:
     """The Actions cron entry point. Prints CONTENT-FREE ``run.started`` / ``run.completed`` lines
-    (counts + public door ids only — NEVER feed content or secrets, Lock #7). Returns 0 (a per-door
-    fault is contained, not a job failure; door-health is a laptop-side projection)."""
+    (counts + public door ids only — NEVER feed content or secrets). Returns 0 (a per-door
+    fault is contained, not a job failure; door health is tracked on the laptop side)."""
     parser = argparse.ArgumentParser(prog="watch.py", description="KAIROS public cloud watcher")
     parser.add_argument(
         "--doors", required=True, type=Path, help="the public door list (doors.json)"

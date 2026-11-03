@@ -1,6 +1,6 @@
 name: watch
 
-# A free-tier cloud SENSE for the private KAIROS spine. It polls public feeds, hashes them, and
+# A free-tier cloud SENSE for a private personal-AI system. It polls public feeds, hashes them, and
 # commits a content-addressed observation back to THIS repo only when a feed moved (~95% of runs
 # are silent). The laptop pulls + folds those observations. NO secrets are used anywhere.
 on:
@@ -11,7 +11,7 @@ on:
   workflow_dispatch: {}
 
 # Least privilege: the only write the watcher needs is committing observations to this public repo.
-# No `secrets:` are referenced — the watcher carries no OAuth / kairos-bot key / model-provider key.
+# No `secrets:` are referenced — the watcher carries no OAuth / bot key / model-provider key.
 permissions:
   contents: write
 
